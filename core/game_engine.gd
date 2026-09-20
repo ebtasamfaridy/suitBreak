@@ -63,19 +63,19 @@ func legal_cards(player: Player) -> Array[Card]:
 		return result
 	if player != state.current_player:
 		return result
-	var round := state.current_round
-	if round == null:
+	var round_state := state.current_round
+	if round_state == null:
 		return result
 	if state.opening_ace_pending:
 		for card in player.hand:
 			if card.suit == SuitBreakTypes.Suit.SPADES and card.rank == SuitBreakTypes.Rank.ACE:
 				result.append(card)
 		return result
-	if not round.has_current_suit:
+	if not round_state.has_current_suit:
 		result.assign(player.hand)
 		return result
 	for card in player.hand:
-		if card.suit == round.current_suit:
+		if card.suit == round_state.current_suit:
 			result.append(card)
 	if result.is_empty():
 		result.assign(player.hand)
@@ -99,20 +99,20 @@ func play_card(player: Player, card: Card) -> PlayOutcome:
 	state.opening_ace_pending = false
 	state.table_cards.append(card)
 
-	var round := state.current_round
-	round.cards_played.append(card)
-	round.players_who_played.append(player)
-	_note_highest(round, player, card)
+	var round_state := state.current_round
+	round_state.cards_played.append(card)
+	round_state.players_who_played.append(player)
+	_note_highest(round_state, player, card)
 
-	if not round.has_current_suit:
-		round.has_current_suit = true
-		round.current_suit = card.suit
+	if not round_state.has_current_suit:
+		round_state.has_current_suit = true
+		round_state.current_suit = card.suit
 		state.last_message = "%s leads %s. Current suit: %s." % [
 			player.display_name, card.label(), Card.suit_name_of(card.suit)
 		]
-	elif card.suit != round.current_suit:
-		round.suit_break_player = player
-		round.round_end_reason = SuitBreakTypes.RoundEndReason.SUIT_BREAK
+	elif card.suit != round_state.current_suit:
+		round_state.suit_break_player = player
+		round_state.round_end_reason = SuitBreakTypes.RoundEndReason.SUIT_BREAK
 		state.last_message = "%s breaks the suit with %s." % [player.display_name, card.label()]
 		var ended := _end_round()
 		_assert_invariants()
@@ -120,13 +120,13 @@ func play_card(player: Player, card: Card) -> PlayOutcome:
 	else:
 		state.last_message = "%s follows with %s." % [player.display_name, card.label()]
 
-	if round.players_who_played.size() >= _round_order.size():
-		round.round_end_reason = SuitBreakTypes.RoundEndReason.ALL_FOLLOWED
+	if round_state.players_who_played.size() >= _round_order.size():
+		round_state.round_end_reason = SuitBreakTypes.RoundEndReason.ALL_FOLLOWED
 		var followed := _end_round()
 		_assert_invariants()
 		return followed
 
-	state.current_player = _round_order[round.players_who_played.size()]
+	state.current_player = _round_order[round_state.players_who_played.size()]
 	_assert_invariants()
 	return PlayOutcome.ok_play(false, false)
 
@@ -178,9 +178,9 @@ func _begin_round(leader: Player) -> void:
 	state.current_player = leader
 	state.table_cards.clear()
 	_round_order = _active_clockwise_from(leader)
-	var round := RoundState.new()
-	round.leader = leader
-	state.current_round = round
+	var round_state := RoundState.new()
+	round_state.leader = leader
+	state.current_round = round_state
 
 
 func _active_clockwise_from(leader: Player) -> Array[Player]:
@@ -197,29 +197,32 @@ func _is_legal(player: Player, card: Card) -> bool:
 	return legal_cards(player).has(card)
 
 
-func _note_highest(round: RoundState, player: Player, card: Card) -> void:
-	if round.highest_card == null or int(card.rank) > int(round.highest_card.rank):
-		round.highest_card = card
-		round.highest_card_player = player
+func _note_highest(round_state: RoundState, player: Player, card: Card) -> void:
+	if round_state.highest_card == null or int(card.rank) > int(round_state.highest_card.rank):
+		round_state.highest_card = card
+		round_state.highest_card_player = player
 
 
 func _end_round() -> PlayOutcome:
-	var round := state.current_round
-	if round.round_end_reason == SuitBreakTypes.RoundEndReason.SUIT_BREAK:
-		var collector := _collector_after_suit_break(round)
+	var round_state := state.current_round
+	var discarded := false
+	if round_state.round_end_reason == SuitBreakTypes.RoundEndReason.SUIT_BREAK:
+		var collector := _collector_after_suit_break(round_state)
 		if collector != null:
 			for card in state.table_cards:
 				collector.hand.append(card)
 			state.last_message += " %s takes the table cards. %s should lead next." % [
-				collector.display_name, round.suit_break_player.display_name
+				collector.display_name, round_state.suit_break_player.display_name
 			]
 		else:
 			_move_table_to_discard()
+			discarded = true
 			state.last_message += " Nobody could take the cards, so they were discarded."
 	else:
 		_move_table_to_discard()
+		discarded = true
 		state.last_message += " Everyone followed. Cards go to the discard pile. %s played the highest card." % (
-			round.highest_card_player.display_name if round.highest_card_player else "Nobody"
+			round_state.highest_card_player.display_name if round_state.highest_card_player else "Nobody"
 		)
 
 	state.table_cards.clear()
@@ -235,23 +238,23 @@ func _end_round() -> PlayOutcome:
 			state.last_message += " %s is the sole loser." % loser.display_name
 		else:
 			state.last_message += " Every player emptied their hand."
-		return PlayOutcome.ok_play(true, true)
+		return PlayOutcome.ok_play(true, true, discarded)
 
-	var intended := round.suit_break_player if round.round_end_reason == SuitBreakTypes.RoundEndReason.SUIT_BREAK else round.highest_card_player
+	var intended := round_state.suit_break_player if round_state.round_end_reason == SuitBreakTypes.RoundEndReason.SUIT_BREAK else round_state.highest_card_player
 	var next_leader := _first_active_from(intended)
 	state.last_message += " %s leads." % next_leader.display_name
 	_begin_round(next_leader)
-	return PlayOutcome.ok_play(true, false)
+	return PlayOutcome.ok_play(true, false, discarded)
 
 
-func _collector_after_suit_break(round: RoundState) -> Player:
-	if round.highest_card_player != null and not round.highest_card_player.hand.is_empty():
-		return round.highest_card_player
+func _collector_after_suit_break(round_state: RoundState) -> Player:
+	if round_state.highest_card_player != null and not round_state.highest_card_player.hand.is_empty():
+		return round_state.highest_card_player
 	var best: Player = null
 	var best_rank := -1
-	for i in round.cards_played.size():
-		var player := round.players_who_played[i]
-		var card := round.cards_played[i]
+	for i in round_state.cards_played.size():
+		var player := round_state.players_who_played[i]
+		var card := round_state.cards_played[i]
 		if player.hand.is_empty():
 			continue
 		if int(card.rank) > best_rank:
@@ -317,15 +320,15 @@ func to_snapshot() -> Dictionary:
 		table_data.append(_card_to_arr(card))
 	var round_data := {}
 	if state.current_round != null:
-		var round := state.current_round
+		var round_state := state.current_round
 		round_data = {
-			"has_suit": round.has_current_suit,
-			"suit": int(round.current_suit) if round.has_current_suit else -1,
-			"leader": round.leader.id if round.leader else -1,
-			"reason": int(round.round_end_reason),
-			"break": round.suit_break_player.id if round.suit_break_player else -1,
-			"high": _card_to_arr(round.highest_card) if round.highest_card else [],
-			"high_player": round.highest_card_player.id if round.highest_card_player else -1,
+			"has_suit": round_state.has_current_suit,
+			"suit": int(round_state.current_suit) if round_state.has_current_suit else -1,
+			"leader": round_state.leader.id if round_state.leader else -1,
+			"reason": int(round_state.round_end_reason),
+			"break": round_state.suit_break_player.id if round_state.suit_break_player else -1,
+			"high": _card_to_arr(round_state.highest_card) if round_state.highest_card else [],
+			"high_player": round_state.highest_card_player.id if round_state.highest_card_player else -1,
 		}
 	return {
 		"phase": int(state.game_phase),
@@ -365,18 +368,18 @@ func apply_snapshot(data: Dictionary) -> void:
 	state.current_leader = _player_by_id(int(data.get("leader", -1)))
 	var round_data: Dictionary = data.get("round", {})
 	if not round_data.is_empty():
-		var round := RoundState.new()
-		round.has_current_suit = bool(round_data.get("has_suit", false))
-		if round.has_current_suit:
-			round.current_suit = int(round_data.get("suit", 0)) as SuitBreakTypes.Suit
-		round.leader = _player_by_id(int(round_data.get("leader", -1)))
-		round.round_end_reason = int(round_data.get("reason", 0)) as SuitBreakTypes.RoundEndReason
-		round.suit_break_player = _player_by_id(int(round_data.get("break", -1)))
+		var round_state := RoundState.new()
+		round_state.has_current_suit = bool(round_data.get("has_suit", false))
+		if round_state.has_current_suit:
+			round_state.current_suit = int(round_data.get("suit", 0)) as SuitBreakTypes.Suit
+		round_state.leader = _player_by_id(int(round_data.get("leader", -1)))
+		round_state.round_end_reason = int(round_data.get("reason", 0)) as SuitBreakTypes.RoundEndReason
+		round_state.suit_break_player = _player_by_id(int(round_data.get("break", -1)))
 		var high: Array = round_data.get("high", [])
 		if not high.is_empty():
-			round.highest_card = _card_from_arr(high)
-		round.highest_card_player = _player_by_id(int(round_data.get("high_player", -1)))
-		state.current_round = round
+			round_state.highest_card = _card_from_arr(high)
+		round_state.highest_card_player = _player_by_id(int(round_data.get("high_player", -1)))
+		state.current_round = round_state
 
 
 func _player_by_id(id: int) -> Player:

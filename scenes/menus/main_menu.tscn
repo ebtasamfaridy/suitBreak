@@ -91,3 +91,21 @@ layout_mode = 2
 text = "Ready"
 horizontal_alignment = 1
 autowrap_mode = 2
+
+[node name="TipLabel" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = -72.0
+offset_right = -24.0
+offset_bottom = -16.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_colors/font_color = Color(0.78, 0.84, 0.8, 1)
+theme_override_font_sizes/font_size = 15
+text = "Tip: tap a card to play it. Hold a card to see it full size."
+horizontal_alignment = 1
+autowrap_mode = 2

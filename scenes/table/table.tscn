@@ -1,6 +1,8 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" uid="uid://0e7kkr4eh5pf" path="res://ui/table.gd" id="1_table"]
+[ext_resource type="PackedScene" path="res://scenes/table/player_seat.tscn" id="2_seat"]
+[ext_resource type="PackedScene" path="res://scenes/cards/card_view.tscn" id="3_card"]
 
 [node name="Table" type="Control"]
 layout_mode = 3
@@ -11,7 +13,8 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_table")
 
-[node name="Felt" type="ColorRect" parent="."]
+[node name="Felt" type="TextureRect" parent="."]
+unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -19,90 +22,234 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0.09, 0.28, 0.18, 1)
+expand_mode = 1
+stretch_mode = 6
 
-[node name="Layout" type="MarginContainer" parent="."]
+[node name="CenterWell" type="Panel" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.42
+anchor_right = 0.5
+anchor_bottom = 0.42
+offset_left = -150.0
+offset_top = -110.0
+offset_right = 150.0
+offset_bottom = 110.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="CenterCards" type="Control" parent="."]
+unique_name_in_owner = true
+clip_contents = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.42
+anchor_right = 0.5
+anchor_bottom = 0.42
+offset_left = -140.0
+offset_top = -90.0
+offset_right = 140.0
+offset_bottom = 90.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="SeatTop" parent="." instance=ExtResource("2_seat")]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -100.0
+offset_top = -8.0
+offset_right = 100.0
+offset_bottom = 142.0
+grow_horizontal = 2
+
+[node name="SeatLeft" parent="." instance=ExtResource("2_seat")]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = -12.0
+offset_top = -90.0
+offset_right = 188.0
+offset_bottom = 80.0
+grow_vertical = 2
+
+[node name="SeatRight" parent="." instance=ExtResource("2_seat")]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -176.0
+offset_top = -90.0
+offset_right = 24.0
+offset_bottom = 80.0
+grow_horizontal = 0
+grow_vertical = 2
+
+[node name="Hud" type="Control" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 24
-theme_override_constants/margin_top = 16
-theme_override_constants/margin_right = 24
-theme_override_constants/margin_bottom = 16
+mouse_filter = 2
 
-[node name="VBox" type="VBoxContainer" parent="Layout"]
-layout_mode = 2
-theme_override_constants/separation = 12
-
-[node name="Header" type="HBoxContainer" parent="Layout/VBox"]
-layout_mode = 2
-theme_override_constants/separation = 16
-
-[node name="BackButton" type="Button" parent="Layout/VBox/Header"]
+[node name="BackButton" type="Button" parent="Hud"]
 unique_name_in_owner = true
-layout_mode = 2
+layout_mode = 0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 88.0
+offset_bottom = 52.0
 text = "Menu"
 
-[node name="Title" type="Label" parent="Layout/VBox/Header"]
-layout_mode = 2
-text = "SuitBreak"
-theme_override_font_sizes/font_size = 22
+[node name="InfoChip" type="HBoxContainer" parent="Hud"]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -280.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = 48.0
+grow_horizontal = 0
+alignment = 2
+theme_override_constants/separation = 16
 
-[node name="SuitLabel" type="Label" parent="Layout/VBox/Header"]
+[node name="SuitLabel" type="Label" parent="Hud/InfoChip"]
 unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.92, 0.96, 0.88, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.5)
+theme_override_font_sizes/font_size = 18
 text = "Suit: —"
-horizontal_alignment = 1
 
-[node name="DiscardLabel" type="Label" parent="Layout/VBox/Header"]
+[node name="DiscardLabel" type="Label" parent="Hud/InfoChip"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_override_colors/font_color = Color(0.92, 0.96, 0.88, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.5)
+theme_override_font_sizes/font_size = 18
 text = "Discard: 0"
 
-[node name="Opponents" type="HBoxContainer" parent="Layout/VBox"]
+[node name="LocalName" type="Label" parent="."]
 unique_name_in_owner = true
-layout_mode = 2
-alignment = 1
-theme_override_constants/separation = 48
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -120.0
+offset_top = -248.0
+offset_right = 120.0
+offset_bottom = -216.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_colors/font_color = Color(0.92, 0.96, 0.88, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.55)
+theme_override_font_sizes/font_size = 22
+text = "You"
+horizontal_alignment = 1
 
-[node name="StatusLabel" type="Label" parent="Layout/VBox"]
+[node name="Hand" type="Control" parent="."]
+unique_name_in_owner = true
+clip_contents = false
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = -210.0
+offset_right = -20.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 0
+
+[node name="TurnBanner" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -240.0
+offset_top = -268.0
+offset_right = 240.0
+offset_bottom = -232.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="TurnLabel" type="Label" parent="TurnBanner"]
 unique_name_in_owner = true
 layout_mode = 2
-autowrap_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.12, 0.1, 1)
+theme_override_font_sizes/font_size = 15
+text = "Your turn"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="StatusLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.58
+anchor_right = 0.5
+anchor_bottom = 0.58
+offset_left = -240.0
+offset_top = -16.0
+offset_right = 240.0
+offset_bottom = 20.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.88, 0.94, 0.84, 0.9)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.5)
+theme_override_font_sizes/font_size = 16
 text = "Dealing..."
 horizontal_alignment = 1
+autowrap_mode = 2
 
-[node name="TableArea" type="CenterContainer" parent="Layout/VBox"]
-layout_mode = 2
-size_flags_vertical = 3
-
-[node name="TableCards" type="HBoxContainer" parent="Layout/VBox/TableArea"]
+[node name="CardPreview" type="ColorRect" parent="."]
 unique_name_in_owner = true
-layout_mode = 2
-theme_override_constants/separation = 10
-alignment = 1
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0.5)
 
-[node name="HandLabel" type="Label" parent="Layout/VBox"]
+[node name="PreviewCenter" type="CenterContainer" parent="CardPreview"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PreviewCard" parent="CardPreview/PreviewCenter" instance=ExtResource("3_card")]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(140, 196)
 layout_mode = 2
-text = "Your hand"
-horizontal_alignment = 1
-
-[node name="HandScroll" type="ScrollContainer" parent="Layout/VBox"]
-custom_minimum_size = Vector2(0, 130)
-layout_mode = 2
-vertical_scroll_mode = 0
-
-[node name="Hand" type="HBoxContainer" parent="Layout/VBox/HandScroll"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-alignment = 1
-theme_override_constants/separation = 8
 
 [node name="GameOverLayer" type="ColorRect" parent="."]
 unique_name_in_owner = true

@@ -1,16 +1,26 @@
 extends Control
 
 const CARD_VIEW := preload("res://scenes/cards/card_view.tscn")
+const PILE_ANGLES := [-22.0, 8.0, 26.0, -10.0, 16.0, -28.0, 4.0, 20.0]
 const BOT_DELAY := 0.65
 const MENU_SCENE := "res://main.tscn"
 
+@onready var _felt: TextureRect = %Felt
+@onready var _center_well: Panel = %CenterWell
 @onready var _back_button: Button = %BackButton
 @onready var _status_label: Label = %StatusLabel
 @onready var _discard_label: Label = %DiscardLabel
 @onready var _suit_label: Label = %SuitLabel
-@onready var _opponents: HBoxContainer = %Opponents
-@onready var _table_cards: HBoxContainer = %TableCards
-@onready var _hand: HBoxContainer = %Hand
+@onready var _seat_top: PlayerSeat = %SeatTop
+@onready var _seat_left: PlayerSeat = %SeatLeft
+@onready var _seat_right: PlayerSeat = %SeatRight
+@onready var _center_cards: Control = %CenterCards
+@onready var _hand: Control = %Hand
+@onready var _turn_banner: PanelContainer = %TurnBanner
+@onready var _turn_label: Label = %TurnLabel
+@onready var _preview_layer: ColorRect = %CardPreview
+@onready var _preview_card: CardView = %PreviewCard
+@onready var _local_name: Label = %LocalName
 @onready var _game_over: ColorRect = %GameOverLayer
 @onready var _result_label: Label = %ResultLabel
 @onready var _menu_button: Button = %MenuButton
@@ -18,12 +28,16 @@ const MENU_SCENE := "res://main.tscn"
 
 var _engine := GameEngine.new()
 var _busy := false
+var _end_sfx_played := false
 
 
 func _ready() -> void:
+	_paint_table()
+	GameAudio.play_music("game")
 	_back_button.pressed.connect(_on_menu_pressed)
 	_menu_button.pressed.connect(_on_menu_pressed)
 	_again_button.pressed.connect(_on_again_pressed)
+	resized.connect(_on_resized)
 	if MatchSettings.networked:
 		set_multiplayer_authority(1)
 		multiplayer.peer_disconnected.connect(_on_peer_disconnected)
@@ -46,6 +60,39 @@ func _ready() -> void:
 	await _advance_bots()
 
 
+func _on_resized() -> void:
+	if _engine.state.players.is_empty():
+		return
+	var human := _local_player()
+	if human == null:
+		return
+	_rebuild_hand(human, _engine.legal_cards(human))
+	_rebuild_center_cards(_engine.state.table_cards)
+
+
+func _paint_table() -> void:
+	var grad := Gradient.new()
+	grad.set_color(0, Color(0.2, 0.58, 0.28))
+	grad.set_color(1, Color(0.04, 0.16, 0.08))
+	var tex := GradientTexture2D.new()
+	tex.gradient = grad
+	tex.fill = GradientTexture2D.FILL_RADIAL
+	tex.fill_from = Vector2(0.5, 0.46)
+	tex.fill_to = Vector2(0.5, 0.02)
+	tex.width = 128
+	tex.height = 128
+	_felt.texture = tex
+	var well := StyleBoxFlat.new()
+	well.bg_color = Color(0.04, 0.22, 0.1, 0.55)
+	well.set_corner_radius_all(140)
+	well.set_border_width_all(0)
+	_center_well.add_theme_stylebox_override("panel", well)
+	var banner := StyleBoxFlat.new()
+	banner.bg_color = Color(0.96, 0.84, 0.22, 0.92)
+	banner.set_corner_radius_all(8)
+	_turn_banner.add_theme_stylebox_override("panel", banner)
+
+
 func _exit_tree() -> void:
 	if SuitBreakNetwork.I.server_disconnected.is_connected(_on_host_lost):
 		SuitBreakNetwork.I.server_disconnected.disconnect(_on_host_lost)
@@ -65,7 +112,11 @@ func _on_again_pressed() -> void:
 	get_tree().reload_current_scene()
 
 
-func _on_card_clicked(card: Card) -> void:
+func _on_card_played(card: Card) -> void:
+	_commit_play.call_deferred(card)
+
+
+func _commit_play(card: Card) -> void:
 	if _busy or not _is_my_turn():
 		return
 	if MatchSettings.networked and not SuitBreakNetwork.I.is_host():
@@ -77,10 +128,22 @@ func _on_card_clicked(card: Card) -> void:
 	if not outcome.ok:
 		_busy = false
 		_status_label.text = outcome.error
+		GameAudio.play_sfx("illegal")
 		return
+	_cue_play_audio(outcome)
 	_refresh()
 	_broadcast_snapshot()
 	await _advance_bots()
+
+
+func _on_card_preview_started(card: Card) -> void:
+	_preview_card.set_display_size(Vector2(140, 196))
+	_preview_card.bind(card, true, false, false)
+	_preview_layer.visible = true
+
+
+func _on_card_preview_ended() -> void:
+	_preview_layer.visible = false
 
 
 @rpc("any_peer", "reliable")
@@ -97,6 +160,7 @@ func request_play(suit: int, rank: int) -> void:
 	if not outcome.ok:
 		_broadcast_snapshot()
 		return
+	_cue_play_audio(outcome)
 	_refresh()
 	_broadcast_snapshot()
 	await _advance_bots()
@@ -113,8 +177,12 @@ func request_snapshot() -> void:
 func apply_snapshot(data: Dictionary) -> void:
 	if SuitBreakNetwork.I.is_host():
 		return
+	var prev_discard := _engine.state.discard_pile.size()
+	var prev_table := _engine.state.table_cards.size()
+	var prev_over := _engine.is_game_over()
 	_engine.apply_snapshot(data)
 	_busy = false
+	_cue_snapshot_audio(prev_discard, prev_table, prev_over)
 	_refresh()
 
 
@@ -127,6 +195,7 @@ func restart_match() -> void:
 	var config := GameConfig.new()
 	config.player_count = clampi(maxi(SuitBreakNetwork.I.roster.size(), MatchSettings.player_count), 2, 4)
 	_engine.start(config, SuitBreakNetwork.I.roster)
+	_end_sfx_played = false
 	_refresh()
 	_broadcast_snapshot()
 	await _advance_bots()
@@ -161,7 +230,8 @@ func _advance_bots() -> void:
 		if _engine.state.current_player == null or _engine.state.current_player.is_human:
 			break
 		var bot_card := SimpleBot.choose(_engine)
-		_engine.play_card(_engine.state.current_player, bot_card)
+		var bot_outcome := _engine.play_card(_engine.state.current_player, bot_card)
+		_cue_play_audio(bot_outcome)
 		_refresh()
 		_broadcast_snapshot()
 	_busy = false
@@ -199,55 +269,72 @@ func _refresh() -> void:
 		return
 	var state := _engine.state
 	_status_label.text = state.last_message
-	_discard_label.text = "Discard: %d" % state.discard_pile.size()
+	_discard_label.text = "Pile %d" % state.discard_pile.size()
 	if state.current_round != null and state.current_round.has_current_suit and state.game_phase == SuitBreakTypes.GamePhase.IN_ROUND:
-		_suit_label.text = "Suit: %s" % Card.suit_name_of(state.current_round.current_suit)
+		_suit_label.text = Card.suit_name_of(state.current_round.current_suit)
 	else:
-		_suit_label.text = "Suit: —"
-	_rebuild_opponents()
-	_rebuild_row(_table_cards, state.table_cards, true, false)
+		_suit_label.text = "No suit"
+	_rebuild_seats()
+	_rebuild_center_cards(state.table_cards)
 	var human := _local_player()
 	if human == null:
 		return
+	_local_name.text = human.display_name
 	var legal := _engine.legal_cards(human)
 	_rebuild_hand(human, legal)
-	%HandLabel.text = "Your hand · %s" % _status_text(human)
-	if _is_my_turn() and not _busy:
-		_status_label.text = "%s  Your turn — play a highlighted card." % state.last_message
+	_update_turn_banner()
+	if _is_my_turn() and not _busy and not _engine.is_game_over():
+		_status_label.text = ""
 	elif MatchSettings.networked and _is_human_seat_turn() and not _is_my_turn():
-		_status_label.text = "%s  Waiting for %s..." % [state.last_message, state.current_player.display_name]
+		_status_label.text = "Waiting for %s..." % state.current_player.display_name
 	_game_over.visible = _engine.is_game_over()
 	if _engine.is_game_over():
 		_result_label.text = _game_over_text()
 		_again_button.visible = (not MatchSettings.networked) or SuitBreakNetwork.I.is_host()
 
 
-func _clear(host: Node) -> void:
-	while host.get_child_count() > 0:
-		var child := host.get_child(0)
-		host.remove_child(child)
-		child.free()
+func _update_turn_banner() -> void:
+	var show := _is_my_turn() and not _busy and not _engine.is_game_over()
+	_turn_banner.visible = show
+	if show:
+		_turn_label.text = "Your turn"
 
 
-func _rebuild_opponents() -> void:
-	_clear(_opponents)
+func _other_players() -> Array[Player]:
 	var local := _local_player()
+	var others: Array[Player] = []
 	for player in _engine.state.players:
 		if local != null and player.id == local.id:
 			continue
-		var box := VBoxContainer.new()
-		box.alignment = BoxContainer.ALIGNMENT_CENTER
-		var name_label := Label.new()
-		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		name_label.text = player.display_name
-		if player == _engine.state.current_player:
-			name_label.text += "  ●"
-		var info := Label.new()
-		info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		info.text = _status_text(player)
-		box.add_child(name_label)
-		box.add_child(info)
-		_opponents.add_child(box)
+		others.append(player)
+	return others
+
+
+func _rebuild_seats() -> void:
+	var seats: Array[PlayerSeat] = [_seat_top, _seat_left, _seat_right]
+	var places: Array[PlayerSeat.SeatPlace] = [
+		PlayerSeat.SeatPlace.TOP,
+		PlayerSeat.SeatPlace.LEFT,
+		PlayerSeat.SeatPlace.RIGHT,
+	]
+	for seat in seats:
+		seat.visible = false
+	var others := _other_players()
+	if others.size() == 1:
+		_seat_top.visible = true
+		_seat_top.setup(others[0], others[0] == _engine.state.current_player, _status_text(others[0]), PlayerSeat.SeatPlace.TOP)
+		return
+	if others.size() == 2:
+		_seat_left.visible = true
+		_seat_right.visible = true
+		_seat_left.setup(others[0], others[0] == _engine.state.current_player, _status_text(others[0]), PlayerSeat.SeatPlace.LEFT)
+		_seat_right.setup(others[1], others[1] == _engine.state.current_player, _status_text(others[1]), PlayerSeat.SeatPlace.RIGHT)
+		return
+	for i in others.size():
+		if i >= seats.size():
+			break
+		seats[i].visible = true
+		seats[i].setup(others[i], others[i] == _engine.state.current_player, _status_text(others[i]), places[i])
 
 
 func _status_text(player: Player) -> String:
@@ -260,17 +347,28 @@ func _status_text(player: Player) -> String:
 			return "%d cards" % player.hand.size()
 
 
-func _rebuild_row(host: HBoxContainer, cards: Array[Card], face_up: bool, interactive: bool) -> void:
-	_clear(host)
+func _clear(host: Node) -> void:
+	var kids := host.get_children()
+	for child in kids:
+		host.remove_child(child)
+		child.queue_free()
+
+
+func _rebuild_center_cards(cards: Array[Card]) -> void:
+	_clear(_center_cards)
 	if cards.is_empty():
-		var empty := Label.new()
-		empty.text = "No cards on the table"
-		host.add_child(empty)
 		return
-	for card in cards:
+	var card_size := CardView.SIZE_PILE
+	for i in cards.size():
 		var view: CardView = CARD_VIEW.instantiate()
-		host.add_child(view)
-		view.bind(card, face_up, interactive, false)
+		_center_cards.add_child(view)
+		view.set_display_size(card_size)
+		view.pivot_offset = card_size * 0.5
+		var t := 0.5 if cards.size() == 1 else float(i) / float(cards.size() - 1)
+		view.position = Vector2(lerpf(36.0, 150.0, t), 18.0 + float(i % 3) * 6.0)
+		view.rotation_degrees = PILE_ANGLES[i % PILE_ANGLES.size()]
+		view.z_index = i
+		view.bind(cards[i], true, false, false)
 
 
 func _rebuild_hand(human: Player, legal: Array[Card]) -> void:
@@ -282,12 +380,73 @@ func _rebuild_hand(human: Player, legal: Array[Card]) -> void:
 			return int(a.rank) < int(b.rank)
 		return int(a.suit) < int(b.suit)
 	)
-	for card in sorted:
+	var count := sorted.size()
+	if count == 0:
+		return
+	var card_size := CardView.SIZE_HAND
+	var area_w := maxf(_hand.size.x, 320.0)
+	var area_h := maxf(_hand.size.y, 180.0)
+	var span := clampf(float(count - 1) * 5.5, 8.0, 52.0)
+	var step := mini(56, int((area_w - card_size.x) / maxi(count, 1)))
+	step = clampi(step, 28, 56)
+	var total_w := card_size.x + float(count - 1) * float(step)
+	var start_x := (area_w - total_w) * 0.5
+	for i in count:
+		var card: Card = sorted[i]
 		var view: CardView = CARD_VIEW.instantiate()
 		_hand.add_child(view)
+		view.set_display_size(card_size)
+		var t := 0.5 if count == 1 else float(i) / float(count - 1)
+		var tilt := lerpf(-span * 0.5, span * 0.5, t)
+		view.rotation_degrees = tilt
 		var can_play := _is_my_turn() and not _busy and legal.has(card)
+		var lift := 28.0 if can_play else 0.0
+		var arc := absf(tilt) * 0.55
+		view.position = Vector2(start_x + float(i) * float(step), area_h - card_size.y - 10.0 - lift + arc)
+		view.z_index = i
 		view.bind(card, true, true, can_play)
-		view.clicked.connect(_on_card_clicked)
+		view.played.connect(_on_card_played)
+		view.preview_started.connect(_on_card_preview_started)
+		view.preview_ended.connect(_on_card_preview_ended)
+
+
+func _cue_play_audio(outcome: PlayOutcome) -> void:
+	if outcome == null or not outcome.ok:
+		return
+	GameAudio.play_sfx("play_card")
+	if outcome.discarded:
+		GameAudio.play_sfx("discard")
+	if outcome.game_over:
+		_cue_game_over_audio()
+
+
+func _cue_snapshot_audio(prev_discard: int, prev_table: int, prev_over: bool) -> void:
+	if _engine.is_game_over() and not prev_over:
+		GameAudio.play_sfx("play_card")
+		if _engine.state.discard_pile.size() > prev_discard:
+			GameAudio.play_sfx("discard")
+		_cue_game_over_audio()
+		return
+	if _engine.state.discard_pile.size() > prev_discard:
+		GameAudio.play_sfx("play_card")
+		GameAudio.play_sfx("discard")
+		return
+	if _engine.state.table_cards.size() != prev_table:
+		GameAudio.play_sfx("play_card")
+
+
+func _cue_game_over_audio() -> void:
+	if _end_sfx_played:
+		return
+	_end_sfx_played = true
+	var local := _local_player()
+	var lost := false
+	for player in _engine.state.players:
+		if player.status == SuitBreakTypes.PlayerStatus.LOSER:
+			if local != null and player.id == local.id:
+				lost = true
+			break
+	GameAudio.play_sfx("lose" if lost else "win")
 
 
 func _game_over_text() -> String:

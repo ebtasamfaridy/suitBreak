@@ -5,6 +5,7 @@ var ok: bool = false
 var error: String = ""
 var round_ended: bool = false
 var game_over: bool = false
+var discarded: bool = false
 
 
 static func fail(message: String) -> PlayOutcome:
@@ -14,9 +15,10 @@ static func fail(message: String) -> PlayOutcome:
 	return outcome
 
 
-static func ok_play(p_round_ended: bool, p_game_over: bool) -> PlayOutcome:
+static func ok_play(p_round_ended: bool, p_game_over: bool, p_discarded: bool = false) -> PlayOutcome:
 	var outcome := PlayOutcome.new()
 	outcome.ok = true
 	outcome.round_ended = p_round_ended
 	outcome.game_over = p_game_over
+	outcome.discarded = p_discarded
 	return outcome

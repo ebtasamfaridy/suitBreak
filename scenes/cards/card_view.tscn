@@ -3,11 +3,11 @@
 [ext_resource type="Script" uid="uid://c2ylxdhkgr3wg" path="res://ui/card_view.gd" id="1_card"]
 
 [node name="CardView" type="Control"]
-custom_minimum_size = Vector2(78, 110)
+custom_minimum_size = Vector2(92, 130)
 layout_mode = 3
 script = ExtResource("1_card")
 
-[node name="Face" type="ColorRect" parent="."]
+[node name="Face" type="Panel" parent="."]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 15
@@ -16,17 +16,27 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0.96, 0.95, 0.92, 1)
 
 [node name="RankTop" type="Label" parent="."]
 unique_name_in_owner = true
-layout_mode = 1
-offset_left = 6.0
+layout_mode = 0
+offset_left = 8.0
 offset_top = 4.0
-offset_right = 72.0
-offset_bottom = 28.0
-theme_override_font_sizes/font_size = 16
-text = "A♠"
+offset_right = 44.0
+offset_bottom = 32.0
+theme_override_font_sizes/font_size = 22
+text = "A"
+mouse_filter = 2
+
+[node name="SuitTop" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 8.0
+offset_top = 26.0
+offset_right = 44.0
+offset_bottom = 52.0
+theme_override_font_sizes/font_size = 18
+text = "♠"
 mouse_filter = 2
 
 [node name="SuitCenter" type="Label" parent="."]
@@ -37,13 +47,13 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -20.0
-offset_top = -22.0
-offset_right = 20.0
-offset_bottom = 22.0
+offset_left = -24.0
+offset_top = -20.0
+offset_right = 24.0
+offset_bottom = 32.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_font_sizes/font_size = 28
+theme_override_font_sizes/font_size = 42
 text = "♠"
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -57,19 +67,18 @@ anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -72.0
-offset_top = -28.0
-offset_right = -6.0
-offset_bottom = -4.0
+offset_left = -44.0
+offset_top = -34.0
+offset_right = -8.0
+offset_bottom = -6.0
 grow_horizontal = 0
 grow_vertical = 0
-theme_override_font_sizes/font_size = 16
-text = "A♠"
+theme_override_font_sizes/font_size = 22
+text = "A"
 horizontal_alignment = 2
-vertical_alignment = 2
 mouse_filter = 2
 
-[node name="Back" type="ColorRect" parent="."]
+[node name="Back" type="Panel" parent="."]
 unique_name_in_owner = true
 visible = false
 layout_mode = 1
@@ -79,7 +88,20 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0.18, 0.28, 0.55, 1)
+
+[node name="BackInner" type="ColorRect" parent="Back"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.18, 0.32, 0.62, 1)
 
 [node name="BackMark" type="Label" parent="Back"]
 layout_mode = 1
@@ -88,8 +110,8 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_colors/font_color = Color(0.75, 0.82, 0.95, 1)
-theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0.78, 0.86, 1, 0.55)
+theme_override_font_sizes/font_size = 16
 text = "SB"
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -105,4 +127,15 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0, 0, 0, 0.45)
+color = Color(0, 0, 0, 0.38)
+
+[node name="Highlight" type="Panel" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2

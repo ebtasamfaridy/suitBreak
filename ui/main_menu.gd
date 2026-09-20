@@ -44,6 +44,7 @@ func _ready() -> void:
 		_ip_input.text = guess
 	SuitBreakNetwork.I.start_discovery()
 	_status_label.text = "Host a room on Wi‑Fi hotspot, or join the host phone."
+	GameAudio.play_music("menu")
 
 
 func _exit_tree() -> void:
@@ -57,6 +58,7 @@ func _exit_tree() -> void:
 
 
 func _on_host_pressed() -> void:
+	GameAudio.play_sfx("host")
 	MatchSettings.player_count = _count_option.get_item_id(_count_option.selected)
 	MatchSettings.display_name = _player_name()
 	SuitBreakNetwork.I.stop_discovery()
@@ -70,6 +72,7 @@ func _on_host_pressed() -> void:
 
 
 func _on_join_pressed() -> void:
+	GameAudio.play_sfx("join")
 	var ip := _ip_input.text.strip_edges()
 	if ip == "":
 		ip = _guess_host_ip()
@@ -125,6 +128,7 @@ func _on_host_discovered(ip: String) -> void:
 
 
 func _on_bots_pressed() -> void:
+	GameAudio.play_sfx("start_match")
 	MatchSettings.player_count = _count_option.get_item_id(_count_option.selected)
 	MatchSettings.display_name = _player_name()
 	MatchSettings.networked = false

@@ -5,6 +5,8 @@ extends Control
 @onready var _start_button: Button = %StartButton
 @onready var _leave_button: Button = %LeaveButton
 
+var _last_roster := 0
+
 
 func _ready() -> void:
 	if SuitBreakNetwork.I == null:
@@ -20,6 +22,8 @@ func _ready() -> void:
 	if SuitBreakNetwork.I.is_host():
 		SuitBreakNetwork.I.announce_local_name()
 	_refresh()
+	_last_roster = SuitBreakNetwork.I.roster.size()
+	GameAudio.play_music("lobby")
 
 
 func _exit_tree() -> void:
@@ -37,6 +41,10 @@ func _exit_tree() -> void:
 
 func _on_lobby_changed(_id: int = 0) -> void:
 	_refresh()
+	var n := SuitBreakNetwork.I.roster.size() if SuitBreakNetwork.I else 0
+	if n > _last_roster:
+		GameAudio.play_sfx("player_join")
+	_last_roster = n
 
 
 func _refresh() -> void:
@@ -74,6 +82,7 @@ func _on_start_pressed() -> void:
 	if SuitBreakNetwork.I.roster.size() < 2:
 		_status_label.text = "Still waiting for another phone to join."
 		return
+	GameAudio.play_sfx("start_match")
 	SuitBreakNetwork.I.start_match()
 
 
