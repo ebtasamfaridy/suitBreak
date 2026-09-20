@@ -280,6 +280,7 @@ func _refresh() -> void:
 	if human == null:
 		return
 	_local_name.text = human.display_name
+	_local_name.modulate = Color(1, 0.95, 0.55) if _is_my_turn() and not _engine.is_game_over() else Color.WHITE
 	var legal := _engine.legal_cards(human)
 	_rebuild_hand(human, legal)
 	_update_turn_banner()
