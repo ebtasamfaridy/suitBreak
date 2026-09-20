@@ -20,6 +20,8 @@ There are no points, rankings, or multiple losers in the first version of the ga
 
 ---
 
+
+
 ## 2. Players
 
 The game supports **N players**.
@@ -30,12 +32,16 @@ The implementation should allow the player count to be configurable so the range
 
 ---
 
+
+
 ## 3. Deck
 
 The game uses one standard **52-card deck** containing:
 
 - 4 suits: Spades, Hearts, Diamonds, Clubs
 - 13 ranks in each suit
+
+
 
 ### Rank order
 
@@ -67,6 +73,8 @@ Example:
 
 ---
 
+
+
 ## 4. Initial Deal
 
 All 52 cards are distributed among the players.
@@ -86,15 +94,23 @@ The exact player order used for dealing must remain deterministic once the game 
 
 ---
 
-## 5. First Leader
+
+
+## 5. Opening Play — Ace of Spades
 
 The player who receives the **Ace of Spades (A♠)** is the first leader.
 
-That player starts the first round and may play any card from their hand.
+That player starts the first round and **must play A♠ as the opening card of the game**.
 
-The suit of the first card played becomes the **current suit** for that round.
+They may not lead with any other card on that first play.
+
+After A♠ is played, the current suit for that round is **Spades**, and normal round rules apply from the next player onward.
+
+On all later rounds, the leader may play **any card** from their hand to establish a new current suit.
 
 ---
+
+
 
 # 6. Round Rules
 
@@ -104,13 +120,15 @@ A round can end in **one of two ways**.
 
 ---
 
+
+
 ## 6.1 Case 1 — Suit Break
 
 The current suit is determined by the first card played in the round.
 
 Every following active player must follow that suit **if they have at least one card of that suit**.
 
-If a player has **no card of the current suit**, they may play **any card of another suit**.
+If a player has **no card of the current suit**, they have to play **any card of another suit**.
 
 That action is a **suit break**.
 
@@ -124,6 +142,8 @@ The moment a suit break happens:
 4. The player who played the **highest-ranked card** takes all cards on the table.
 5. The player who caused the suit break becomes the **leader of the next round**, subject to being an active player.
 6. The next leader may play **any card** from their hand.
+
+
 
 ### Example
 
@@ -159,6 +179,8 @@ C may now play any card from their hand.
 
 ---
 
+
+
 ## 6.2 Case 2 — No Suit Break
 
 If every active player is able to follow the current suit, then no suit break occurs.
@@ -173,6 +195,8 @@ The round ends when the **last active player has played**.
 2. **All cards played in this round are moved to the discarded pile.**
 3. No player receives those cards back into their hand.
 4. The new leader may play any card from their hand.
+
+
 
 ### Example
 
@@ -206,6 +230,8 @@ Nobody collects these cards.
 
 ---
 
+
+
 # 7. Winning a Round vs Winning the Game
 
 The player who has the highest-ranked card in a round does **not automatically win the game**.
@@ -221,6 +247,8 @@ A player may win a suit-break round and collect several cards.
 That player is therefore farther from emptying their hand, even though they won the card comparison for that round.
 
 ---
+
+
 
 # 8. Reaching Zero Cards
 
@@ -238,6 +266,8 @@ If a player plays their final card and their hand becomes empty:
 - If a later active player is able to play and breaks the suit, that suit break can still resolve the round.
 - After the current round is fully resolved, the player who reached zero is permanently **out of the game**.
 
+
+
 ### Example
 
 ```text
@@ -253,6 +283,8 @@ A has finished, but the current round still resolves according to the rules.
 A does not return to future turns.
 
 ---
+
+
 
 # 9. A Player Who Finishes While Breaking the Suit
 
@@ -280,6 +312,8 @@ The next eligible active player must therefore be selected according to the norm
 
 ---
 
+
+
 # 10. Finished Players Are Removed From Turn Order
 
 Once a player has finished with zero cards, they are no longer an active participant.
@@ -304,6 +338,8 @@ B → C → D → B → C → D → ...
 A does not receive any further turns.
 
 ---
+
+
 
 # 11. Last Remaining Player
 
@@ -330,14 +366,20 @@ The game ends immediately once this condition is reached.
 
 ---
 
+
+
 # 12. Leader Rules Summary
 
 There are two different ways a next leader is chosen.
 
-| End condition | Cards on table | Who leads next? |
-|---|---|---|
-| Suit break | Highest-ranked player collects them | Player who caused the suit break |
-| No suit break | Moved to discard pile | Player who played the highest-ranked card |
+
+| End condition | Cards on table                      | Who leads next?                           |
+| ------------- | ----------------------------------- | ----------------------------------------- |
+| Suit break    | Highest-ranked player collects them | Player who caused the suit break          |
+| No suit break | Moved to discard pile               | Player who played the highest-ranked card |
+
+
+
 
 ### Important distinction
 
@@ -359,6 +401,8 @@ C → leads the next round
 ```
 
 ---
+
+
 
 # 13. Current Suit
 
@@ -384,6 +428,8 @@ After the round ends, the next leader chooses a new card and therefore establish
 
 ---
 
+
+
 # 14. Important Strategy
 
 SuitBreak is intentionally built around a tension between **getting rid of cards** and **avoiding unwanted card collection**.
@@ -405,6 +451,8 @@ The ultimate objective remains:
 
 ---
 
+
+
 # 15. Complete Round Example
 
 Consider four active players:
@@ -412,6 +460,8 @@ Consider four active players:
 ```text
 A → B → C → D
 ```
+
+
 
 ### Round 1
 
@@ -430,6 +480,8 @@ Highest card = ♥K
 B collects all cards
 C becomes next leader
 ```
+
+
 
 ### Round 2
 
@@ -456,6 +508,8 @@ All four cards → discarded pile
 B now starts the next round with any card.
 
 ---
+
+
 
 # 16. State Definitions for the Game Engine
 
@@ -494,18 +548,28 @@ game_state
 
 ---
 
+
+
 # 17. Non-Rules / Implementation Notes
 
 These are implementation decisions rather than gameplay rules:
 
-- The game should work completely offline.
-- Multiplayer will use a local LAN connection.
-- One player acts as the host/authority.
-- Other players join the host over the same local Wi-Fi/hotspot.
-- The core game rules must work without networking so they can be tested locally with bots first.
-- Networking should synchronize player actions and authoritative game state rather than independently running competing game logic on each client.
+### Current build
+
+- **LAN host/join** on the same Wi‑Fi or phone hotspot (same pattern as LanBattle).
+- **Host Room** creates the authoritative match. **Join Room** connects to that host.
+- Players wait in a **lobby** until the host starts. Then every phone shares one deal, one table, and one turn order.
+- The host runs the rules engine. Joining phones send card plays and display the host’s state.
+- **Play vs Bots** remains available for a single-device test match.
+
+### Network notes
+
+- Use the hotspot phone as Host. Other phones join that Wi‑Fi, then tap Join Room.
+- If auto-discovery misses the host, type the IP shown on the host lobby screen.
 
 ---
+
+
 
 # 18. Rule Invariants
 
@@ -524,8 +588,11 @@ These conditions should always remain true during a valid game:
 11. After a no-break round, the highest-ranked card player is the next leader if still active; otherwise the next eligible active player is selected.
 12. The game ends when exactly one active player remains.
 13. That remaining player is the sole loser.
+14. The very first card played in the game is always **A♠**, played by the player who was dealt it.
 
 ---
+
+
 
 # 19. Open Questions for Future Versions
 
